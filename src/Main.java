@@ -29,15 +29,15 @@ public class Main extends Application implements EventHandler<KeyEvent>
 
   Random random = new Random();
   private final Group root = new Group();
-  private final Xform graphXForm = new Xform();
+  //private final Xform graphXForm = new Xform();
   private final PerspectiveCamera camera = new PerspectiveCamera(true);
   private final Xform cameraXform = new Xform();
   private final Xform cameraXform2 = new Xform();
   private final Xform cameraXform3 = new Xform();
-  private final double CAMERA_INITIAL_DISTANCE = -450;
-  private double cameraDistance = -450;
-  private final double CAMERA_INITIAL_X_ANGLE = 30.0;
-  private final double CAMERA_INITIAL_Y_ANGLE = 320.0;
+  private final double CAMERA_INITIAL_DISTANCE = -500;
+  private double cameraDistance = -500;
+  private final double CAMERA_INITIAL_X_ANGLE = 0.0;
+  private final double CAMERA_INITIAL_Y_ANGLE = 0.0;
   private final double CAMERA_NEAR_CLIP = 0.1;
   private final double CAMERA_FAR_CLIP = 10000.0;
   private final double LIGHTNING_STRIKE_PROB = 0.001;
@@ -57,14 +57,13 @@ public class Main extends Application implements EventHandler<KeyEvent>
   public void start(Stage primaryStage)
   {
     BorderPane pane = new BorderPane();
-    Scene topScene = new Scene(pane, 1024, 768, true, SceneAntialiasing.BALANCED);
+    Scene topScene = new Scene(pane, 768, 768, true, SceneAntialiasing.BALANCED);
     topScene.setOnKeyPressed(this);
 
-    SubScene scene = new SubScene(root, 1024, 768, true, SceneAntialiasing.BALANCED);
+    SubScene scene = new SubScene(root, 768, 768, true, SceneAntialiasing.BALANCED);
     scene.setFill(Color.GREY);
 
     pane.setCenter(scene);
-    root.getChildren().add(graphXForm);
 
     scene.widthProperty().bind(pane.widthProperty());
 
@@ -94,11 +93,11 @@ public class Main extends Application implements EventHandler<KeyEvent>
         graph[i][j] = new Cell(i, j, 0);
         graph[i][j].getCell().setTranslateX(i - 125);
         graph[i][j].getCell().setTranslateY(j - 125);
-        graphXForm.getChildren().add(graph[i][j].getCell());
+        root.getChildren().add(graph[i][j].getCell());
       }
     }
-    graphXForm.rx.setAngle(cameraXform.rx.getAngle());
-    graphXForm.ry.setAngle(cameraXform.ry.getAngle());
+    //graphXForm.rx.setAngle(cameraXform.rx.getAngle());
+    //graphXForm.ry.setAngle(cameraXform.ry.getAngle());
 
     for (int i = 1; i <= 251; i++)
     {
@@ -141,12 +140,12 @@ public class Main extends Application implements EventHandler<KeyEvent>
   {
     if (e.getCode() == KeyCode.O)
     {
-      cameraDistance -= 2;
-      camera.setTranslateZ(cameraDistance);
+     cameraDistance -= 2;
+     camera.setTranslateZ(cameraDistance);
     } else if (e.getCode() == KeyCode.I)
     {
-      cameraDistance += 2;
-      camera.setTranslateZ(cameraDistance);
+     cameraDistance += 2;
+     camera.setTranslateZ(cameraDistance);
     }
   }
 
@@ -175,8 +174,8 @@ public class Main extends Application implements EventHandler<KeyEvent>
   class Loop extends AnimationTimer
   {
     int frame = 0;
-    private TreeSpecies one = new TreeSpecies(random.nextDouble(), Color.FORESTGREEN);
-    private TreeSpecies two = new TreeSpecies(random.nextDouble(), Color.DARKOLIVEGREEN);
+    private TreeSpecies one = new TreeSpecies(0.75, Color.FORESTGREEN);
+    private TreeSpecies two = new TreeSpecies(0.5, Color.DARKOLIVEGREEN);
 
     @Override
     public void handle(long time)
@@ -208,7 +207,7 @@ public class Main extends Application implements EventHandler<KeyEvent>
             {
               if(c.getStatus() == 1 || c.getStatus() == 2)
               {
-                nextState[c.getX()][c.getY()] = 2;
+                nextState[c.getX()][c.getY()] = 3;
               }
             }
           }
@@ -267,25 +266,6 @@ public class Main extends Application implements EventHandler<KeyEvent>
               graph[i][j].getCell().setVisible(false);
               graph[i][j].setStatus(0);
             }
-          }
-        }
-      }
-    }
-
-    /**
-     * This function clears the dead cells after every time the graph is updated, this helps with the
-     * overhead.
-     */
-    private void clearDeadCells()
-    {
-      for (int i = 1; i <= 251; i++)
-      {
-        for (int j = 1; j <= 251; j++)
-        {
-          int status = graph[i][j].getStatus();
-          if (status == 0)
-          {
-            graph[i][j].getCell().setVisible(false);
           }
         }
       }

@@ -21,11 +21,17 @@ public class TreeSpecies {
 
     public double getLongevity() { return this.longevity; }
 
-    public double getBiomanss() { return this.biomass; }
+    public double getBiomass()
+    {
+        return this.biomass;
+    }
 
     public void setLongevity(double value) { this.longevity = value; }
 
-    public void setBiomanss(double value) { this.biomass = value; }
+    public void setBiomass(double value)
+    {
+        this.biomass = value;
+    }
 
     public Color getColor() { return this.color; }
 }

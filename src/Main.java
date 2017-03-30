@@ -26,8 +26,7 @@ import java.util.Random;
  */
 public class Main extends Application implements EventHandler<KeyEvent>
 {
-
-  Random random = new Random();
+  private Random random = new Random();
   private final Group root = new Group();
   //private final Xform graphXForm = new Xform();
   private final PerspectiveCamera camera = new PerspectiveCamera(true);
@@ -46,8 +45,8 @@ public class Main extends Application implements EventHandler<KeyEvent>
   private final boolean GUI = true;
   private final int MAX_STEPS = 5000;
 
-  static Cell[][] graph = new Cell[252][252]; //252 for padding
-  static int[][] graphNoGUI = new int[252][252]; //252 for graph without GUI
+  private static Cell[][] graph = new Cell[252][252]; //252 for padding
+  private int[][] graphNoGUI = new int[252][252]; //252 for graph without GUI
   private int[][] nextState = new int[252][252]; //252 to match the graphs size, makes the logic simpler to understand.
 
   private Loop loop = new Loop();
@@ -102,9 +101,9 @@ public class Main extends Application implements EventHandler<KeyEvent>
   {
     if(GUI)
     {
-      for (int i = 1; i <= 251; i++)
+      for(int i = 0; i <= 251; i++)
       {
-        for (int j = 1; j <= 251; j++)
+        for(int j = 0; j <= 251; j++)
         {
           nextState[i][j] = 0;
           graph[i][j] = new Cell(i, j, 0);
@@ -114,9 +113,9 @@ public class Main extends Application implements EventHandler<KeyEvent>
         }
       }
 
-      for (int i = 1; i <= 251; i++)
+      for(int i = 1; i <= 250; i++)
       {
-        for (int j = 1; j <= 251; j++)
+        for(int j = 1; j <= 250; j++)
         {
           graph[i][j].setNeighbors(getNeighbors(i, j));
         }
@@ -124,9 +123,9 @@ public class Main extends Application implements EventHandler<KeyEvent>
     }
     else
     {
-      for (int i = 1; i <= 251; i++)
+      for(int i = 0; i <= 251; i++)
       {
-        for (int j = 1; j <= 251; j++)
+        for(int j = 0; j <= 251; j++)
         {
           nextState[i][j] = 0;
           graphNoGUI[i][j] = 0;
@@ -145,7 +144,7 @@ public class Main extends Application implements EventHandler<KeyEvent>
       {
         if(row != col)
         {
-          if(row > 0 && col > 0 && row < 252 && col < 252)
+          if(row > 0 && col > 0 && row < 251 && col < 251)
           {
             neighbors.add(graph[row][col]);
           }
@@ -238,8 +237,8 @@ public class Main extends Application implements EventHandler<KeyEvent>
         }
         else
         {
-          one.setBiomanss(one.getBiomanss() / MAX_STEPS);
-          System.out.println("One biomass:" + one.getBiomanss());
+          one.setBiomass(one.getBiomass() / MAX_STEPS);
+          System.out.println("One biomass: " + one.getBiomass() * 100 + "%");
           stop();
         }
     }
@@ -254,9 +253,9 @@ public class Main extends Application implements EventHandler<KeyEvent>
     {
       double biomass = 0.0;
       //Updates the state based on the status
-      for(int i = 1; i <= 251; i++)
+      for(int i = 1; i <= 250; i++)
       {
-        for(int j = 1; j <= 251; j++)
+        for(int j = 1; j <= 250; j++)
         {
           int status = graph[i][j].getStatus();
           if(status == 3)
@@ -299,12 +298,12 @@ public class Main extends Application implements EventHandler<KeyEvent>
       }
 
       biomass /= 62500.0;
-      one.setBiomanss(one.getBiomanss() + biomass);
+      one.setBiomass(one.getBiomass() + biomass);
 
       //Updates cell only when needed
-      for(int i = 1; i <= 251; i++)
+      for(int i = 1; i <= 250; i++)
       {
-        for(int j = 1; j <= 251; j++)
+        for(int j = 1; j <= 250; j++)
         {
           int status = nextState[i][j];
           if(graph[i][j].getStatus() != status)
@@ -341,9 +340,9 @@ public class Main extends Application implements EventHandler<KeyEvent>
     {
       double biomass = 0.0;
       //Updates the state based on the status
-      for(int i = 1; i <= 251; i++)
+      for(int i = 1; i <= 250; i++)
       {
-        for(int j = 1; j <= 251; j++)
+        for(int j = 1; j <= 250; j++)
         {
           int status = graphNoGUI[i][j];
           if(status == 3)
@@ -356,7 +355,7 @@ public class Main extends Application implements EventHandler<KeyEvent>
               {
                 if(row != col)
                 {
-                  if(row > 0 && col > 0 && row < 252 && col < 252)
+                  if(row > 0 && col > 0 && row < 251 && col < 251)
                   {
                     if(graphNoGUI[row][col] == 1  || (status == 2 && twoSpecies))
                     {
@@ -395,12 +394,12 @@ public class Main extends Application implements EventHandler<KeyEvent>
       }
 
       biomass /= 62500.0;
-      one.setBiomanss(one.getBiomanss() + biomass);
+      one.setBiomass(one.getBiomass() + biomass);
 
       //Updates cell only when needed
-      for(int i = 1; i <= 251; i++)
+      for(int i = 1; i <= 250; i++)
       {
-        for(int j = 1; j <= 251; j++)
+        for(int j = 1; j <= 250; j++)
         {
           int status = nextState[i][j];
           if(graphNoGUI[i][j] != status)

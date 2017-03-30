@@ -43,7 +43,8 @@ public class Main extends Application implements EventHandler<KeyEvent>
   private final double LIGHTNING_STRIKE_PROB = 0.001;
   private boolean twoSpecies = false;
   private final boolean RUN_SLOW = false;
-  private final boolean GUI = false;
+  private final boolean GUI = true;
+  private final int MAX_STEPS = 5000;
 
   static Cell[][] graph = new Cell[252][252]; //252 for padding
   static int[][] graphNoGUI = new int[252][252]; //252 for graph without GUI
@@ -222,52 +223,25 @@ public class Main extends Application implements EventHandler<KeyEvent>
     @Override
     public void handle(long time)
     {
-      if(GUI)
-      {
-        //Slow it down for debugging
-        if (RUN_SLOW)
+      if(frame < MAX_STEPS)
         {
-          if (slow % 25 == 0)
-          {
-            slow = 1;
-            updateGraph();
-            frame++;
-          }
-          slow++;
-        }
-        //else normal iterations with graphic still
-        else
-        {
-          if (frame < 5000)
+          if(GUI)
           {
             updateGraph();
-            frame++;
-            System.out.println("frame:" + frame);
           }
           else
           {
-            one.setBiomanss(one.getBiomanss() / 5000.0);
-            System.out.println("One biomass:" + one.getBiomanss());
-            frame = 0;
+            updateGraphNoGraphic();
           }
-        }
-      }
-      else
-      {
-        if (frame < 5000)
-        {
-          updateGraphNoGraphic();
           frame++;
+          System.out.println("frame:" + frame);
         }
         else
         {
-          one.setBiomanss(one.getBiomanss() / 5000.0);
+          one.setBiomanss(one.getBiomanss() / MAX_STEPS);
           System.out.println("One biomass:" + one.getBiomanss());
-          frame = 0;
-          loop.stop();
-          loop.running = false;
+          stop();
         }
-      }
     }
 
     private void createTwoSpecies()

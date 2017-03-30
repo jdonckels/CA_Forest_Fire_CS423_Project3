@@ -42,8 +42,11 @@ public class Main extends Application implements EventHandler<KeyEvent>
   private final double CAMERA_FAR_CLIP = 10000.0;
   private final double LIGHTNING_STRIKE_PROB = 0.001;
   private boolean twoSpecies = false;
+  private final boolean RUN_SLOW = false;
+  private final boolean GUI = false;
 
   static Cell[][] graph = new Cell[252][252]; //252 for padding
+  static int[][] graphNoGUI = new int[252][252]; //252 for graph without GUI
   private int[][] nextState = new int[252][252]; //252 to match the graphs size, makes the logic simpler to understand.
 
   private Loop loop = new Loop();
@@ -57,28 +60,37 @@ public class Main extends Application implements EventHandler<KeyEvent>
   @Override
   public void start(Stage primaryStage)
   {
-    BorderPane pane = new BorderPane();
-    Scene topScene = new Scene(pane, 768, 768, true, SceneAntialiasing.BALANCED);
-    topScene.setOnKeyPressed(this);
+    if(GUI)
+    {
+      BorderPane pane = new BorderPane();
+      Scene topScene = new Scene(pane, 768, 768, true, SceneAntialiasing.BALANCED);
+      topScene.setOnKeyPressed(this);
 
-    SubScene scene = new SubScene(root, 768, 768, true, SceneAntialiasing.BALANCED);
-    scene.setFill(Color.BLACK);
+      SubScene scene = new SubScene(root, 768, 768, true, SceneAntialiasing.BALANCED);
+      scene.setFill(Color.BLACK);
 
-    pane.setCenter(scene);
+      pane.setCenter(scene);
 
-    scene.widthProperty().bind(pane.widthProperty());
+      scene.widthProperty().bind(pane.widthProperty());
 
-    buildCamera();
-    buildBoard();
+      buildCamera();
+      buildBoard();
 
-    primaryStage.setTitle("Forest Fire");
-    primaryStage.setScene(topScene);
-    primaryStage.show();
+      primaryStage.setTitle("Forest Fire");
+      primaryStage.setScene(topScene);
+      primaryStage.show();
 
-    scene.setCamera(camera);
+      scene.setCamera(camera);
 
-    loop.start();
-    loop.running = true;
+      loop.start();
+      loop.running = true;
+    }
+    else
+    {
+      buildBoard();
+      loop.start();
+      loop.running = true;
+    }
   }
 
   /**
@@ -87,25 +99,37 @@ public class Main extends Application implements EventHandler<KeyEvent>
    */
   private void buildBoard()
   {
-    for(int i = 1; i <= 251; i++)
+    if(GUI)
     {
-      for(int j = 1; j <= 251; j++)
+      for (int i = 1; i <= 251; i++)
       {
-        nextState[i][j] = 0;
-        graph[i][j] = new Cell(i, j, 0);
-        graph[i][j].getCell().setTranslateX(i - 125);
-        graph[i][j].getCell().setTranslateY(j - 125);
-        root.getChildren().add(graph[i][j].getCell());
+        for (int j = 1; j <= 251; j++)
+        {
+          nextState[i][j] = 0;
+          graph[i][j] = new Cell(i, j, 0);
+          graph[i][j].getCell().setTranslateX(i - 125);
+          graph[i][j].getCell().setTranslateY(j - 125);
+          root.getChildren().add(graph[i][j].getCell());
+        }
+      }
+
+      for (int i = 1; i <= 251; i++)
+      {
+        for (int j = 1; j <= 251; j++)
+        {
+          graph[i][j].setNeighbors(getNeighbors(i, j));
+        }
       }
     }
-    //graphXForm.rx.setAngle(cameraXform.rx.getAngle());
-    //graphXForm.ry.setAngle(cameraXform.ry.getAngle());
-
-    for(int i = 1; i <= 251; i++)
+    else
     {
-      for(int j = 1; j <= 251; j++)
+      for (int i = 1; i <= 251; i++)
       {
-        graph[i][j].setNeighbors(getNeighbors(i, j));
+        for (int j = 1; j <= 251; j++)
+        {
+          nextState[i][j] = 0;
+          graphNoGUI[i][j] = 0;
+        }
       }
     }
   }
@@ -198,14 +222,52 @@ public class Main extends Application implements EventHandler<KeyEvent>
     @Override
     public void handle(long time)
     {
-      if(slow % 25 == 0)
+      if(GUI)
       {
-        slow = 1;
-        updateGraph();
-        //clearDeadCells();
-        frame++;
+        //Slow it down for debugging
+        if (RUN_SLOW)
+        {
+          if (slow % 25 == 0)
+          {
+            slow = 1;
+            updateGraph();
+            frame++;
+          }
+          slow++;
+        }
+        //else normal iterations with graphic still
+        else
+        {
+          if (frame < 5000)
+          {
+            updateGraph();
+            frame++;
+            System.out.println("frame:" + frame);
+          }
+          else
+          {
+            one.setBiomanss(one.getBiomanss() / 5000.0);
+            System.out.println("One biomass:" + one.getBiomanss());
+            frame = 0;
+          }
+        }
       }
-      slow++;
+      else
+      {
+        if (frame < 5000)
+        {
+          updateGraphNoGraphic();
+          frame++;
+        }
+        else
+        {
+          one.setBiomanss(one.getBiomanss() / 5000.0);
+          System.out.println("One biomass:" + one.getBiomanss());
+          frame = 0;
+          loop.stop();
+          loop.running = false;
+        }
+      }
     }
 
     private void createTwoSpecies()
@@ -216,6 +278,7 @@ public class Main extends Application implements EventHandler<KeyEvent>
 
     private void updateGraph()
     {
+      double biomass = 0.0;
       //Updates the state based on the status
       for(int i = 1; i <= 251; i++)
       {
@@ -228,15 +291,16 @@ public class Main extends Application implements EventHandler<KeyEvent>
             nextState[i][j] = 0;
             for(Cell c : graph[i][j].getNeighbors())
             {
-              if(c.getStatus() == 1 || c.getStatus() == 2)
+              if(c.getStatus() == 1  || (status == 2 && twoSpecies))
               {
                 nextState[c.getX()][c.getY()] = 3;
               }
             }
           }
           //if there is a tree, check for lightning strike
-          else if(status == 1 || status == 2)
+          else if(status == 1  || (status == 2 && twoSpecies))
           {
+            biomass += 1.0;
             if(random.nextDouble() < LIGHTNING_STRIKE_PROB)
             {
               nextState[i][j] = 3;
@@ -260,6 +324,9 @@ public class Main extends Application implements EventHandler<KeyEvent>
         }
       }
 
+      biomass /= 62500.0;
+      one.setBiomanss(one.getBiomanss() + biomass);
+
       //Updates cell only when needed
       for(int i = 1; i <= 251; i++)
       {
@@ -280,7 +347,7 @@ public class Main extends Application implements EventHandler<KeyEvent>
               graph[i][j].getCell().setVisible(true);
               graph[i][j].setStatus(1);
             }
-            else if(status == 2)
+            else if(status == 2 && twoSpecies)
             {
               graph[i][j].getCell().setFill(two.getColor());
               graph[i][j].getCell().setVisible(true);
@@ -288,9 +355,97 @@ public class Main extends Application implements EventHandler<KeyEvent>
             }
             else if(status == 0)
             {
-//              graph[i][j].getCell().setFill(Color.WHITE);
               graph[i][j].getCell().setVisible(false);
               graph[i][j].setStatus(0);
+            }
+          }
+        }
+      }
+    }
+
+    private void updateGraphNoGraphic()
+    {
+      double biomass = 0.0;
+      //Updates the state based on the status
+      for(int i = 1; i <= 251; i++)
+      {
+        for(int j = 1; j <= 251; j++)
+        {
+          int status = graphNoGUI[i][j];
+          if(status == 3)
+          {
+            //On fire, go to barren and set all neighbor trees on fire
+            nextState[i][j] = 0;
+            for(int row = i - 1; row <= i + 1; row++)
+            {
+              for(int col = j - 1; col <= j + 1; col++)
+              {
+                if(row != col)
+                {
+                  if(row > 0 && col > 0 && row < 252 && col < 252)
+                  {
+                    if(graphNoGUI[row][col] == 1  || (status == 2 && twoSpecies))
+                    {
+                      nextState[row][col] = 3;
+                    }
+                  }
+                }
+              }
+            }
+          }
+          //if there is a tree, check for lightning strike
+          else if(status == 1  || (status == 2 && twoSpecies))
+          {
+            biomass += 1.0;
+            if(random.nextDouble() < LIGHTNING_STRIKE_PROB)
+            {
+              nextState[i][j] = 3;
+            }
+          }
+          //if barren chance to spawn tree
+          else if(status == 0)
+          {
+            if(random.nextDouble() < one.getProbability())
+            {
+              nextState[i][j] = 1;
+            }
+            else if(twoSpecies)
+            {
+              if(random.nextDouble() < two.getProbability())
+              {
+                nextState[i][j] = 2;
+              }
+            }
+          }
+        }
+      }
+
+      biomass /= 62500.0;
+      one.setBiomanss(one.getBiomanss() + biomass);
+
+      //Updates cell only when needed
+      for(int i = 1; i <= 251; i++)
+      {
+        for(int j = 1; j <= 251; j++)
+        {
+          int status = nextState[i][j];
+          if(graphNoGUI[i][j] != status)
+          {
+            if(status == 3)
+            {
+              graphNoGUI[i][j] = 3;
+            }
+            else if(status == 1)
+            {
+              graphNoGUI[i][j] = 1;
+            }
+            else if(status == 2 && twoSpecies)
+            {
+              graphNoGUI[i][j] = 2;
+            }
+            else if(status == 0)
+            {
+              graphNoGUI[i][j] = 0;
             }
           }
         }

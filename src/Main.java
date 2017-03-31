@@ -6,6 +6,7 @@
 
 import javafx.animation.AnimationTimer;
 import javafx.application.Application;
+import javafx.application.Platform;
 import javafx.event.EventHandler;
 import javafx.scene.*;
 import javafx.scene.input.KeyCode;
@@ -14,9 +15,16 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 
+import java.io.FileOutputStream;
+import java.io.PrintStream;
+import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+
+//TODO implement GA instead of iterating over p values (fitness = biomass*longevity maybe?)
+//TODO firefighters
+//TODO 2 treeSpecies
 
 /**
  * This is my main class that contains the game loop and the majority of the calculations.
@@ -40,9 +48,13 @@ public class Main extends Application implements EventHandler<KeyEvent>
   private final double CAMERA_NEAR_CLIP = 0.1;
   private final double CAMERA_FAR_CLIP = 10000.0;
   private final double LIGHTNING_STRIKE_PROB = 0.001;
+  private double p[] = new double[100];
+  private double bio[] = new double[100];
+  private double longev[] = new double[100];
   private boolean twoSpecies = false;
-  private final boolean GUI = true;
+  private final boolean GUI = false;
   private final int MAX_STEPS = 5000;
+  private int iteration = 0;
 
   private static Cell[][] graph = new Cell[252][252]; //252 for padding
   private int[][] graphNoGUI = new int[252][252]; //252 for graph without GUI
@@ -59,6 +71,11 @@ public class Main extends Application implements EventHandler<KeyEvent>
   @Override
   public void start(Stage primaryStage)
   {
+    for(int i = 0; i < 100; i++)
+    {
+      p[i] = (i + 1) * 0.01;
+    }
+
     if(GUI)
     {
       BorderPane pane = new BorderPane();
@@ -150,7 +167,6 @@ public class Main extends Application implements EventHandler<KeyEvent>
         }
       }
     }
-
     return neighbors;
   }
 
@@ -207,6 +223,25 @@ public class Main extends Application implements EventHandler<KeyEvent>
     cameraXform.ry.setPivotX(0);
   }
 
+  private void saveResults()
+  {
+    PrintStream out = null;
+    try
+    {
+      String filename = "./data/ForestFireData<" + System.currentTimeMillis() + ">.csv";
+      out = new PrintStream(new FileOutputStream(filename));
+      out.println("pVal, biomass, longevity");
+      for(int i = 0; i < 100; i++)
+      {
+        out.println(p[i] + ", " + bio[i] + ", " + longev[i]);
+      }
+      out.flush();
+    } catch(Exception e)
+    {
+      e.printStackTrace();
+    }
+  }
+
   /**
    * This is the main game loop that is ran based on when the user clicking the run button.
    */
@@ -214,13 +249,20 @@ public class Main extends Application implements EventHandler<KeyEvent>
   {
     boolean running = false;
     int frame = 0;
-    private TreeSpecies one = new TreeSpecies(0.75, Color.FORESTGREEN);
+    private TreeSpecies one;
     private TreeSpecies two = new TreeSpecies(0.5, Color.DARKOLIVEGREEN);
 
     @Override
     public void handle(long time)
     {
-      if(frame < MAX_STEPS)
+      if(iteration < 100)
+      {
+        if(frame == 0)
+        {
+          System.out.println("iteration: " + iteration);
+          one = new TreeSpecies(p[iteration], Color.FORESTGREEN);
+        }
+        if(frame < MAX_STEPS)
         {
           if(GUI)
           {
@@ -231,14 +273,34 @@ public class Main extends Application implements EventHandler<KeyEvent>
             updateGraphNoGraphic();
           }
           frame++;
-          System.out.println("frame:" + frame);
+//          System.out.println("frame:" + frame);
         }
         else
         {
           one.setBiomass(one.getBiomass() / MAX_STEPS);
           System.out.println("One biomass: " + one.getBiomass() * 100 + "%");
-          stop();
+          bio[iteration] = one.getBiomass();
+          if(one.getLongevity() != 0)
+          {
+            longev[iteration] = one.getLongevity();
+          }
+          else
+          {
+            longev[iteration] = MAX_STEPS;
+          }
+          iteration++;
+          frame = 0;
         }
+      }
+      else
+      {
+        saveResults();
+        stop();
+        if(!GUI)
+        {
+          Platform.exit();
+        }
+      }
     }
 
     private void updateGraph()
@@ -256,14 +318,14 @@ public class Main extends Application implements EventHandler<KeyEvent>
             nextState[i][j] = 0;
             for(Cell c : graph[i][j].getNeighbors())
             {
-              if(c.getStatus() == 1  || (status == 2 && twoSpecies))
+              if(c.getStatus() == 1 || (status == 2 && twoSpecies))
               {
                 nextState[c.getX()][c.getY()] = 3;
               }
             }
           }
           //if there is a tree, check for lightning strike
-          else if(status == 1  || (status == 2 && twoSpecies))
+          else if(status == 1 || (status == 2 && twoSpecies))
           {
             biomass += 1.0;
             if(random.nextDouble() < LIGHTNING_STRIKE_PROB)
@@ -291,6 +353,13 @@ public class Main extends Application implements EventHandler<KeyEvent>
 
       biomass /= 62500.0;
       one.setBiomass(one.getBiomass() + biomass);
+      if(biomass == 0 && frame > 0)
+      {
+        if(one.getLongevity() == 0)
+        {
+          one.setLongevity(frame);
+        }
+      }
 
       //Updates cell only when needed
       for(int i = 1; i <= 250; i++)
@@ -349,7 +418,7 @@ public class Main extends Application implements EventHandler<KeyEvent>
                 {
                   if(row > 0 && col > 0 && row < 251 && col < 251)
                   {
-                    if(graphNoGUI[row][col] == 1  || (status == 2 && twoSpecies))
+                    if(graphNoGUI[row][col] == 1 || (status == 2 && twoSpecies))
                     {
                       nextState[row][col] = 3;
                     }
@@ -359,7 +428,7 @@ public class Main extends Application implements EventHandler<KeyEvent>
             }
           }
           //if there is a tree, check for lightning strike
-          else if(status == 1  || (status == 2 && twoSpecies))
+          else if(status == 1 || (status == 2 && twoSpecies))
           {
             biomass += 1.0;
             if(random.nextDouble() < LIGHTNING_STRIKE_PROB)

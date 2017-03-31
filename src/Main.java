@@ -15,15 +15,12 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 
-import java.io.FileOutputStream;
-import java.io.PrintStream;
-import java.net.InetAddress;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
 //TODO implement GA instead of iterating over p values (fitness = biomass*longevity maybe?)
-//TODO firefighters
 //TODO 2 treeSpecies
 
 /**
@@ -36,7 +33,7 @@ public class Main extends Application implements EventHandler<KeyEvent>
 {
   private Random random = new Random();
   private final Group root = new Group();
-  //private final Xform graphXForm = new Xform();
+
   private final PerspectiveCamera camera = new PerspectiveCamera(true);
   private final Xform cameraXform = new Xform();
   private final Xform cameraXform2 = new Xform();
@@ -48,12 +45,17 @@ public class Main extends Application implements EventHandler<KeyEvent>
   private final double CAMERA_NEAR_CLIP = 0.1;
   private final double CAMERA_FAR_CLIP = 10000.0;
   private final double LIGHTNING_STRIKE_PROB = 0.001;
+
   private double p[] = new double[100];
   private double bio[] = new double[100];
   private double longev[] = new double[100];
+
   private boolean twoSpecies = false;
   private final boolean GUI = false;
+  private final boolean DEBUG = false;
+  private final boolean FIREFIGHTERS = true;
   private final int MAX_STEPS = 5000;
+  private int numberOfFireFighters = 0;
   private int iteration = 0;
 
   private static Cell[][] graph = new Cell[252][252]; //252 for padding
@@ -225,20 +227,54 @@ public class Main extends Application implements EventHandler<KeyEvent>
 
   private void saveResults()
   {
-    PrintStream out = null;
+    BufferedWriter bw = null;
+    FileWriter fw = null;
+
     try
     {
-      String filename = "./data/ForestFireData<" + System.currentTimeMillis() + ">.csv";
-      out = new PrintStream(new FileOutputStream(filename));
-      out.println("pVal, biomass, longevity");
-      for(int i = 0; i < 100; i++)
+      String filename = "";
+      if(!FIREFIGHTERS)
       {
-        out.println(p[i] + ", " + bio[i] + ", " + longev[i]);
+        filename = "./data/ForestFireData.csv";
+        fw = new FileWriter(filename,false);
+        bw = new BufferedWriter(fw);
+        bw.write("pVal, biomass, longevity\n");
+        for(int i = 0; i < 100; i++)
+        {
+          bw.write(p[i] + ", " + bio[i] + ", " + longev[i] + "\n");
+        }
       }
-      out.flush();
+      else
+      {
+        filename =  "./data/ForestFireDataWithFireFighters.csv";
+        fw = new FileWriter(filename,false);
+        bw = new BufferedWriter(fw);
+        bw.write("pVal, firefighters, biomass, longevity \n");
+        for(int i = 0; i < 100; i++)
+        {
+          bw.write(p[i] + ", " + numberOfFireFighters + ", " + bio[i] + ", " + longev[i] + "\n");
+        }
+      }
+
     } catch(Exception e)
     {
       e.printStackTrace();
+    }
+    finally
+    {
+      try {
+
+        if (bw != null)
+          bw.close();
+
+        if (fw != null)
+          fw.close();
+
+      } catch (IOException ex) {
+
+        ex.printStackTrace();
+
+      }
     }
   }
 
@@ -249,21 +285,24 @@ public class Main extends Application implements EventHandler<KeyEvent>
   {
     boolean running = false;
     int frame = 0;
-    private TreeSpecies one;
+    private TreeSpecies one = new TreeSpecies(0.5, Color.FORESTGREEN);
     private TreeSpecies two = new TreeSpecies(0.5, Color.DARKOLIVEGREEN);
+    private int numberOfFireFightersLeft = 0;
+
 
     @Override
     public void handle(long time)
     {
-      if(iteration < 100)
+      if(iteration < 100 && numberOfFireFighters <= 1000)
       {
-        if(frame == 0)
+        if(frame == 0 && !FIREFIGHTERS)
         {
           System.out.println("iteration: " + iteration);
           one = new TreeSpecies(p[iteration], Color.FORESTGREEN);
         }
         if(frame < MAX_STEPS)
         {
+          numberOfFireFightersLeft = numberOfFireFighters;
           if(GUI)
           {
             updateGraph();
@@ -273,14 +312,14 @@ public class Main extends Application implements EventHandler<KeyEvent>
             updateGraphNoGraphic();
           }
           frame++;
-//          System.out.println("frame:" + frame);
+          if(DEBUG) System.out.println("frame:" + frame);
         }
         else
         {
           one.setBiomass(one.getBiomass() / MAX_STEPS);
-          System.out.println("One biomass: " + one.getBiomass() * 100 + "%");
+          if (DEBUG) System.out.println("One biomass: " + one.getBiomass() * 100 + "%");
           bio[iteration] = one.getBiomass();
-          if(one.getLongevity() != 0)
+          if (one.getLongevity() != 0)
           {
             longev[iteration] = one.getLongevity();
           }
@@ -290,6 +329,7 @@ public class Main extends Application implements EventHandler<KeyEvent>
           }
           iteration++;
           frame = 0;
+          numberOfFireFighters += 50;
         }
       }
       else
@@ -305,20 +345,59 @@ public class Main extends Application implements EventHandler<KeyEvent>
 
     private void updateGraph()
     {
+      double biomass = setCellNextState();
+
+      biomass /= 62500.0;
+      one.setBiomass(one.getBiomass() + biomass);
+      if(biomass == 0 && frame > 0)
+      {
+        if(one.getLongevity() == 0)
+        {
+          one.setLongevity(frame);
+        }
+      }
+
+      updateCells();
+    }
+
+    private void updateGraphNoGraphic()
+    {
+      double biomass = setCellNextStateNoGUI();
+
+      biomass /= 62500.0;
+      one.setBiomass(one.getBiomass() + biomass);
+      if(biomass == 0 && frame > 0)
+      {
+        if(one.getLongevity() == 0)
+        {
+          one.setLongevity(frame);
+        }
+      }
+
+      updateCellsNoGUI();
+    }
+
+    //Updates the state based on the status
+    private double setCellNextState()
+    {
       double biomass = 0.0;
-      //Updates the state based on the status
+
       for(int i = 1; i <= 250; i++)
       {
         for(int j = 1; j <= 250; j++)
         {
           int status = graph[i][j].getStatus();
-          if(status == 3)
+          if(status == 4)
+          {
+            nextState[i][j] = 1;
+          }
+          else if(status == 3)
           {
             //On fire, go to barren and set all neighbor trees on fire
             nextState[i][j] = 0;
-            for(Cell c : graph[i][j].getNeighbors())
+            for (Cell c : graph[i][j].getNeighbors())
             {
-              if(c.getStatus() == 1 || (status == 2 && twoSpecies))
+              if (c.getStatus() == 1 || (status == 2 && twoSpecies))
               {
                 nextState[c.getX()][c.getY()] = 3;
               }
@@ -351,17 +430,12 @@ public class Main extends Application implements EventHandler<KeyEvent>
         }
       }
 
-      biomass /= 62500.0;
-      one.setBiomass(one.getBiomass() + biomass);
-      if(biomass == 0 && frame > 0)
-      {
-        if(one.getLongevity() == 0)
-        {
-          one.setLongevity(frame);
-        }
-      }
+      return biomass;
+    }
 
-      //Updates cell only when needed
+    //Updates cell only when needed
+    private void updateCells()
+    {
       for(int i = 1; i <= 250; i++)
       {
         for(int j = 1; j <= 250; j++)
@@ -371,9 +445,19 @@ public class Main extends Application implements EventHandler<KeyEvent>
           {
             if(status == 3)
             {
-              graph[i][j].getCell().setFill(Color.ORANGE);
-              graph[i][j].getCell().setVisible(true);
-              graph[i][j].setStatus(3);
+              if(FIREFIGHTERS && numberOfFireFightersLeft > 0)
+              {
+                graph[i][j].getCell().setFill(Color.BLUE);
+                graph[i][j].getCell().setVisible(true);
+                graph[i][j].setStatus(4);
+                numberOfFireFightersLeft--;
+              }
+              else
+              {
+                graph[i][j].getCell().setFill(Color.ORANGE);
+                graph[i][j].getCell().setVisible(true);
+                graph[i][j].setStatus(3);
+              }
             }
             else if(status == 1)
             {
@@ -397,28 +481,33 @@ public class Main extends Application implements EventHandler<KeyEvent>
       }
     }
 
-    private void updateGraphNoGraphic()
+    //Updates the state based on the status
+    private double setCellNextStateNoGUI()
     {
       double biomass = 0.0;
-      //Updates the state based on the status
-      for(int i = 1; i <= 250; i++)
+
+      for (int i = 1; i <= 250; i++)
       {
-        for(int j = 1; j <= 250; j++)
+        for (int j = 1; j <= 250; j++)
         {
           int status = graphNoGUI[i][j];
-          if(status == 3)
+          if(status == 4)
+          {
+            nextState[i][j] = 1;
+          }
+          else if (status == 3)
           {
             //On fire, go to barren and set all neighbor trees on fire
             nextState[i][j] = 0;
-            for(int row = i - 1; row <= i + 1; row++)
+            for (int row = i - 1; row <= i + 1; row++)
             {
-              for(int col = j - 1; col <= j + 1; col++)
+              for (int col = j - 1; col <= j + 1; col++)
               {
-                if(!(row == i && col == j))
+                if (!(row == i && col == j))
                 {
-                  if(row > 0 && col > 0 && row < 251 && col < 251)
+                  if (row > 0 && col > 0 && row < 251 && col < 251)
                   {
-                    if(graphNoGUI[row][col] == 1 || (status == 2 && twoSpecies))
+                    if (graphNoGUI[row][col] == 1 || (status == 2 && twoSpecies))
                     {
                       nextState[row][col] = 3;
                     }
@@ -428,24 +517,24 @@ public class Main extends Application implements EventHandler<KeyEvent>
             }
           }
           //if there is a tree, check for lightning strike
-          else if(status == 1 || (status == 2 && twoSpecies))
+          else if (status == 1 || (status == 2 && twoSpecies))
           {
             biomass += 1.0;
-            if(random.nextDouble() < LIGHTNING_STRIKE_PROB)
+            if (random.nextDouble() < LIGHTNING_STRIKE_PROB)
             {
               nextState[i][j] = 3;
             }
           }
           //if barren chance to spawn tree
-          else if(status == 0)
+          else if (status == 0)
           {
-            if(random.nextDouble() < one.getProbability())
+            if (random.nextDouble() < one.getProbability())
             {
               nextState[i][j] = 1;
             }
-            else if(twoSpecies)
+            else if (twoSpecies)
             {
-              if(random.nextDouble() < two.getProbability())
+              if (random.nextDouble() < two.getProbability())
               {
                 nextState[i][j] = 2;
               }
@@ -454,10 +543,12 @@ public class Main extends Application implements EventHandler<KeyEvent>
         }
       }
 
-      biomass /= 62500.0;
-      one.setBiomass(one.getBiomass() + biomass);
+      return biomass;
+    }
 
-      //Updates cell only when needed
+    //Updates cell only when needed
+    private void updateCellsNoGUI()
+    {
       for(int i = 1; i <= 250; i++)
       {
         for(int j = 1; j <= 250; j++)
@@ -467,7 +558,15 @@ public class Main extends Application implements EventHandler<KeyEvent>
           {
             if(status == 3)
             {
-              graphNoGUI[i][j] = 3;
+              if(FIREFIGHTERS && numberOfFireFightersLeft > 0)
+              {
+                graphNoGUI[i][j] = 4;
+                numberOfFireFightersLeft--;
+              }
+              else
+              {
+                graphNoGUI[i][j] = 3;
+              }
             }
             else if(status == 1)
             {

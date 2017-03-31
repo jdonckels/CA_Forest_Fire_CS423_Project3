@@ -29,7 +29,7 @@ final class Cell
    *
    * @param xpos   the x position of the cell
    * @param ypos   the y position of the cell
-   * @param status the status 0 = barren, 1 = tree One, 2 = tree Two, 3 on Fire, 4
+   * @param status the status 0 = barren, 1 = tree One, 2 = tree Two, 3 = on Fire, 4 = put out by firefighter
    */
   Cell(int xpos, int ypos, int status)
   {

@@ -41,7 +41,6 @@ public class Main extends Application implements EventHandler<KeyEvent>
   private final double CAMERA_FAR_CLIP = 10000.0;
   private final double LIGHTNING_STRIKE_PROB = 0.001;
   private boolean twoSpecies = false;
-  private final boolean RUN_SLOW = false;
   private final boolean GUI = true;
   private final int MAX_STEPS = 5000;
 
@@ -142,7 +141,7 @@ public class Main extends Application implements EventHandler<KeyEvent>
     {
       for(int col = j - 1; col <= j + 1; col++)
       {
-        if(row != col)
+        if(!(row == i && col == j))
         {
           if(row > 0 && col > 0 && row < 251 && col < 251)
           {
@@ -213,7 +212,6 @@ public class Main extends Application implements EventHandler<KeyEvent>
    */
   class Loop extends AnimationTimer
   {
-    int slow = 0;
     boolean running = false;
     int frame = 0;
     private TreeSpecies one = new TreeSpecies(0.75, Color.FORESTGREEN);
@@ -241,12 +239,6 @@ public class Main extends Application implements EventHandler<KeyEvent>
           System.out.println("One biomass: " + one.getBiomass() * 100 + "%");
           stop();
         }
-    }
-
-    private void createTwoSpecies()
-    {
-      one = new TreeSpecies(random.nextDouble(), Color.FORESTGREEN);
-      two = new TreeSpecies(random.nextDouble(), Color.DARKOLIVEGREEN);
     }
 
     private void updateGraph()
@@ -353,7 +345,7 @@ public class Main extends Application implements EventHandler<KeyEvent>
             {
               for(int col = j - 1; col <= j + 1; col++)
               {
-                if(row != col)
+                if(!(row == i && col == j))
                 {
                   if(row > 0 && col > 0 && row < 251 && col < 251)
                   {

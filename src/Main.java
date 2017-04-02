@@ -53,7 +53,7 @@ public class Main extends Application implements EventHandler<KeyEvent>
   private boolean twoSpecies = false;
   private final boolean GUI = false;
   private final boolean DEBUG = false;
-  private final boolean FIREFIGHTERS = true;
+  private final boolean FIREFIGHTERS = false;
   private final int MAX_STEPS = 5000;
   private int numberOfFireFighters = 0;
   private int iteration = 0;
@@ -92,7 +92,7 @@ public class Main extends Application implements EventHandler<KeyEvent>
       scene.widthProperty().bind(pane.widthProperty());
 
       buildCamera();
-      buildBoard();
+      buildBoard(true);
 
       primaryStage.setTitle("Forest Fire");
       primaryStage.setScene(topScene);
@@ -105,7 +105,7 @@ public class Main extends Application implements EventHandler<KeyEvent>
     }
     else
     {
-      buildBoard();
+      buildBoard(true);
       loop.start();
       loop.running = true;
     }
@@ -115,7 +115,7 @@ public class Main extends Application implements EventHandler<KeyEvent>
    * This function is used to build the initial board, so the only thing that needs to be called
    * for every cell is toLife() or toDeath().
    */
-  private void buildBoard()
+  private void buildBoard(boolean first_iteration)
   {
     if(GUI)
     {
@@ -131,11 +131,14 @@ public class Main extends Application implements EventHandler<KeyEvent>
         }
       }
 
-      for(int i = 1; i <= 250; i++)
+      if(first_iteration)
       {
-        for(int j = 1; j <= 250; j++)
+        for (int i = 1; i <= 250; i++)
         {
-          graph[i][j].setNeighbors(getNeighbors(i, j));
+          for (int j = 1; j <= 250; j++)
+          {
+            graph[i][j].setNeighbors(getNeighbors(i, j));
+          }
         }
       }
     }
@@ -249,10 +252,10 @@ public class Main extends Application implements EventHandler<KeyEvent>
         filename =  "./data/ForestFireDataWithFireFighters.csv";
         fw = new FileWriter(filename,false);
         bw = new BufferedWriter(fw);
-        bw.write("pVal, firefighters, biomass, longevity \n");
-        for(int i = 0; i < 100; i++)
+        bw.write("(0.5 prob tree) firefighters, biomass, longevity \n");
+        for(int i = 0; i <= 20; i++)
         {
-          bw.write(p[i] + ", " + numberOfFireFighters + ", " + bio[i] + ", " + longev[i] + "\n");
+          bw.write( (i * 50)+ ", " + bio[i] + ", " + longev[i] + "\n");
         }
       }
 
@@ -285,7 +288,7 @@ public class Main extends Application implements EventHandler<KeyEvent>
   {
     boolean running = false;
     int frame = 0;
-    private TreeSpecies one = new TreeSpecies(0.5, Color.FORESTGREEN);
+    private TreeSpecies one = new TreeSpecies(1, Color.FORESTGREEN);
     private TreeSpecies two = new TreeSpecies(0.5, Color.DARKOLIVEGREEN);
     private int numberOfFireFightersLeft = 0;
 
@@ -329,7 +332,10 @@ public class Main extends Application implements EventHandler<KeyEvent>
           }
           iteration++;
           frame = 0;
-          numberOfFireFighters += 50;
+          one.setBiomass(0.0);
+          one.setLongevity(0.0);
+          if(FIREFIGHTERS) numberOfFireFighters += 50;
+          buildBoard(false);
         }
       }
       else

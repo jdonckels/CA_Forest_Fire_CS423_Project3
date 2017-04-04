@@ -362,7 +362,6 @@ public class Main extends Application implements EventHandler<KeyEvent>
           one.setLongevity(frame);
         }
       }
-
       updateCells();
     }
 

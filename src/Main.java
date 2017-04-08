@@ -16,6 +16,8 @@ import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 
 import java.io.*;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -49,11 +51,15 @@ public class Main extends Application implements EventHandler<KeyEvent>
   private double p[] = new double[100];
   private double bio[] = new double[100];
   private double longev[] = new double[100];
+  private double fitness[] = new double[100];
+  private double top_fitness[] = new double[100];
+  private double top_Pval[] = new double[100];
 
   private boolean twoSpecies = false;
   private final boolean GUI = false;
   private final boolean DEBUG = false;
   private final boolean FIREFIGHTERS = false;
+  private final boolean GA = true;
   private final int MAX_STEPS = 5000;
   private int numberOfFireFighters = 0;
   private int iteration = 0;
@@ -73,9 +79,12 @@ public class Main extends Application implements EventHandler<KeyEvent>
   @Override
   public void start(Stage primaryStage)
   {
-    for(int i = 0; i < 100; i++)
+    if(!GA)
     {
-      p[i] = (i + 1) * 0.01;
+      for (int i = 0; i < 100; i++)
+      {
+        p[i] = (i + 1) * 0.01;
+      }
     }
 
     if(GUI)
@@ -111,10 +120,6 @@ public class Main extends Application implements EventHandler<KeyEvent>
     }
   }
 
-  /**
-   * This function is used to build the initial board, so the only thing that needs to be called
-   * for every cell is toLife() or toDeath().
-   */
   private void buildBoard(boolean first_iteration)
   {
     if(GUI)
@@ -241,10 +246,21 @@ public class Main extends Application implements EventHandler<KeyEvent>
         filename = "./data/ForestFireData.csv";
         fw = new FileWriter(filename,false);
         bw = new BufferedWriter(fw);
-        bw.write("pVal, biomass, longevity\n");
-        for(int i = 0; i < 100; i++)
+        if(!GA)
         {
-          bw.write(p[i] + ", " + bio[i] + ", " + longev[i] + "\n");
+          bw.write("pVal, biomass, longevity\n");
+          for (int i = 0; i < 100; i++)
+          {
+            bw.write(p[i] + ", " + bio[i] + ", " + longev[i] + "\n");
+          }
+        }
+        else
+        {
+          bw.write("pVal, biomass, longevity, fitness, top_pval, top_fitness\n");
+          for (int i = 0; i < 100; i++)
+          {
+            bw.write(p[i] + ", " + bio[i] + ", " + longev[i] + ", " + fitness[i] + ", " + top_Pval[i] + ", " + top_fitness[i] + "\n");
+          }
         }
       }
       else
@@ -288,65 +304,189 @@ public class Main extends Application implements EventHandler<KeyEvent>
   {
     boolean running = false;
     int frame = 0;
-    private TreeSpecies one = new TreeSpecies(1, Color.FORESTGREEN);
+    private TreeSpecies one = new TreeSpecies(0.9, Color.FORESTGREEN);
     private TreeSpecies two = new TreeSpecies(0.5, Color.DARKOLIVEGREEN);
+    private TreeSpecies top_tree = one;
     private int numberOfFireFightersLeft = 0;
+    private List<Double> unused_p_values = new ArrayList<>();
+    private boolean fill_p_values = true;
 
 
     @Override
     public void handle(long time)
     {
-      if(iteration < 100 && numberOfFireFighters <= 1000)
+      if(GA)
       {
-        if(frame == 0 && !FIREFIGHTERS)
+        if(fill_p_values)
         {
-          System.out.println("iteration: " + iteration);
-          one = new TreeSpecies(p[iteration], Color.FORESTGREEN);
-        }
-        if(frame < MAX_STEPS)
-        {
-          numberOfFireFightersLeft = numberOfFireFighters;
-          if(GUI)
+          for(int i = 0; i < 100; i++)
           {
-            updateGraph();
+            unused_p_values.add((i + 1) * 0.01);
+          }
+          fill_p_values = false;
+          unused_p_values.remove(one.getProbability());
+        }
+
+
+        if(unused_p_values.size() > 10)
+        {
+          if (frame == 0)
+          {
+            double random_value = getRandomValue();
+            int stuck = 0;
+            while(!unused_p_values.contains(random_value))
+            {
+              if(stuck <= 10)
+              {
+                random_value = getRandomValue();
+              }
+              else
+              {
+                BigDecimal b = new BigDecimal(random.nextDouble());
+                b = b.setScale(2, RoundingMode.CEILING);
+                System.out.println("Getting random, am stuck + psize:" + unused_p_values.size());
+                random_value = b.doubleValue();
+              }
+              stuck++;
+            }
+            unused_p_values.remove(random_value);
+            System.out.println("iteration: " + iteration + " : " + random_value);
+            p[iteration] = random_value;
+            one = new TreeSpecies(random_value, Color.FORESTGREEN);
+          }
+          if (frame < MAX_STEPS)
+          {
+            if (GUI)
+            {
+              updateGraph();
+            }
+            else
+            {
+              updateGraphNoGraphic();
+            }
+            frame++;
           }
           else
           {
-            updateGraphNoGraphic();
+            one.setBiomass(one.getBiomass() / MAX_STEPS);
+
+            bio[iteration] = one.getBiomass();
+            if (one.getLongevity() != 0)
+            {
+              longev[iteration] = one.getLongevity();
+              one.setFitness(one.getLongevity() * one.getBiomass());
+            }
+            else
+            {
+              longev[iteration] = MAX_STEPS;
+              one.setFitness(5000 * one.getBiomass());
+            }
+
+            if(top_tree == null || top_tree.getFitness() < one.getFitness()) top_tree = one;
+            System.out.println("top:" + top_tree.getFitness() + " vs one:" + one.getFitness());
+            top_fitness[iteration] = top_tree.getFitness();
+            fitness[iteration] = one.getFitness();
+            top_Pval[iteration] = top_tree.getProbability();
+
+            iteration++;
+            frame = 0;
+            one.setBiomass(0.0);
+            one.setLongevity(0.0);
+            buildBoard(false);
           }
-          frame++;
-          if(DEBUG) System.out.println("frame:" + frame);
         }
         else
         {
-          one.setBiomass(one.getBiomass() / MAX_STEPS);
-          if (DEBUG) System.out.println("One biomass: " + one.getBiomass() * 100 + "%");
-          bio[iteration] = one.getBiomass();
-          if (one.getLongevity() != 0)
+          saveResults();
+          stop();
+          if (!GUI)
           {
-            longev[iteration] = one.getLongevity();
+            Platform.exit();
           }
-          else
-          {
-            longev[iteration] = MAX_STEPS;
-          }
-          iteration++;
-          frame = 0;
-          one.setBiomass(0.0);
-          one.setLongevity(0.0);
-          if(FIREFIGHTERS) numberOfFireFighters += 50;
-          buildBoard(false);
         }
+
       }
       else
       {
-        saveResults();
-        stop();
-        if(!GUI)
+        if (iteration < 100 && numberOfFireFighters <= 1000)
         {
-          Platform.exit();
+          if (frame == 0 && !FIREFIGHTERS)
+          {
+            System.out.println("iteration: " + iteration);
+            one = new TreeSpecies(p[iteration], Color.FORESTGREEN);
+          }
+          if (frame < MAX_STEPS)
+          {
+            numberOfFireFightersLeft = numberOfFireFighters;
+            if (GUI)
+            {
+              updateGraph();
+            }
+            else
+            {
+              updateGraphNoGraphic();
+            }
+            frame++;
+            if (DEBUG) System.out.println("frame:" + frame);
+          }
+          else
+          {
+            one.setBiomass(one.getBiomass() / MAX_STEPS);
+            if (DEBUG) System.out.println("One biomass: " + one.getBiomass() * 100 + "%");
+            bio[iteration] = one.getBiomass();
+            if (one.getLongevity() != 0)
+            {
+              longev[iteration] = one.getLongevity();
+            }
+            else
+            {
+              longev[iteration] = MAX_STEPS;
+            }
+            iteration++;
+            frame = 0;
+            one.setBiomass(0.0);
+            one.setLongevity(0.0);
+            if (FIREFIGHTERS) numberOfFireFighters += 50;
+            buildBoard(false);
+          }
+        }
+        else
+        {
+          saveResults();
+          stop();
+          if (!GUI)
+          {
+            Platform.exit();
+          }
         }
       }
+    }
+
+    private double getRandomValue()
+    {
+      double rangeMin, rangeMax;
+      double prob = top_tree.getProbability();
+      if(prob >= 0.05)
+      {
+        rangeMin = prob - 0.05;
+      }
+      else
+      {
+        rangeMin = 0;
+      }
+
+      if(prob <= 0.95)
+      {
+        rangeMax = prob + 0.05;
+      }
+      else
+      {
+        rangeMax = 1;
+      }
+
+      BigDecimal randomValue = new BigDecimal(rangeMin + (rangeMax - rangeMin) * random.nextDouble());
+      randomValue = randomValue.setScale(2, RoundingMode.CEILING);
+      return randomValue.doubleValue();
     }
 
     private void updateGraph()

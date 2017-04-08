@@ -34,4 +34,6 @@ public class TreeSpecies {
     public double getFitness() { return this.fitness; }
 
     public void setFitness(double fitness) { this.fitness = fitness; }
+
+    public void setProbability(double prop) { this.probability = prop; }
 }

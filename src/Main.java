@@ -49,13 +49,19 @@ public class Main extends Application implements EventHandler<KeyEvent>
   private final double LIGHTNING_STRIKE_PROB = 0.001;
 
   private double p[] = new double[100];
+  private double p_two[] = new double[100];
   private double bio[] = new double[100];
+  private double bio_two[] = new double[100];
   private double longev[] = new double[100];
+  private double longev_two[] = new double[100];
   private double fitness[] = new double[100];
+  private double fitness_two[] = new double[100];
   private double top_fitness[] = new double[100];
+  private double top_fitness_two[] = new double[100];
   private double top_Pval[] = new double[100];
+  private double top_Pval_two[] = new double[100];
 
-  private boolean twoSpecies = false;
+  private boolean twoSpecies = true;
   private final boolean GUI = false;
   private final boolean DEBUG = false;
   private final boolean FIREFIGHTERS = false;
@@ -256,10 +262,22 @@ public class Main extends Application implements EventHandler<KeyEvent>
         }
         else
         {
-          bw.write("pVal, biomass, longevity, fitness, top_pval, top_fitness\n");
-          for (int i = 0; i < 100; i++)
+          if(!twoSpecies)
           {
-            bw.write(p[i] + ", " + bio[i] + ", " + longev[i] + ", " + fitness[i] + ", " + top_Pval[i] + ", " + top_fitness[i] + "\n");
+            bw.write("pVal, biomass, longevity, fitness, top_pval, top_fitness\n");
+            for (int i = 0; i < 100; i++)
+            {
+              bw.write(p[i] + ", " + bio[i] + ", " + longev[i] + ", " + fitness[i] + ", " + top_Pval[i] + ", " + top_fitness[i] + "\n");
+            }
+          }
+          else
+          {
+            bw.write("pVal, biomass, longevity, fitness, top_pval, top_fitness, pVal_Two, biomass_Two, longevity_Two, top_Fitness_Two, top_Pval_Two\n");
+            for (int i = 0; i < 100; i++)
+            {
+              bw.write(p[i] + ", " + bio[i] + ", " + longev[i] + ", " + fitness[i] + ", " + top_Pval[i] + ", " + top_fitness[i] +
+                      p_two[i] + ", " + bio_two[i] + ", " + longev_two[i] + ", " + fitness_two[i] + ", " + top_Pval_two[i] + ", " + top_fitness_two[i] +"\n");
+            }
           }
         }
       }
@@ -304,11 +322,14 @@ public class Main extends Application implements EventHandler<KeyEvent>
   {
     boolean running = false;
     int frame = 0;
-    private TreeSpecies one = new TreeSpecies(0.9, Color.FORESTGREEN);
-    private TreeSpecies two = new TreeSpecies(0.5, Color.DARKOLIVEGREEN);
+    private TreeSpecies one = new TreeSpecies(0.6, Color.FORESTGREEN);
+    private TreeSpecies two = new TreeSpecies(0.6, Color.DARKOLIVEGREEN);
     private TreeSpecies top_tree = one;
+    private TreeSpecies top_tree_two = two;
+    private boolean first_iteration = true;
     private int numberOfFireFightersLeft = 0;
     private List<Double> unused_p_values = new ArrayList<>();
+    private List<Double> unused_p_values_two = new ArrayList<>();
     private boolean fill_p_values = true;
 
 
@@ -325,35 +346,67 @@ public class Main extends Application implements EventHandler<KeyEvent>
           }
           fill_p_values = false;
           unused_p_values.remove(one.getProbability());
+          for(int i = 0; i < 100; i++)
+          {
+            unused_p_values_two.add((i + 1) * 0.01);
+          }
+          unused_p_values_two.remove(two.getProbability());
         }
 
-
-        if(unused_p_values.size() > 10)
+        if(unused_p_values.size() > 10 && unused_p_values_two.size() > 10)
         {
-          if (frame == 0)
+          if (frame == 0 && !first_iteration)
           {
-            double random_value = getRandomValue();
+            double random_value = getRandomValue(false);
             int stuck = 0;
             while(!unused_p_values.contains(random_value))
             {
               if(stuck <= 10)
               {
-                random_value = getRandomValue();
+                random_value = getRandomValue(false);
               }
               else
               {
                 BigDecimal b = new BigDecimal(random.nextDouble());
                 b = b.setScale(2, RoundingMode.CEILING);
-                System.out.println("Getting random, am stuck + psize:" + unused_p_values.size());
                 random_value = b.doubleValue();
               }
               stuck++;
             }
             unused_p_values.remove(random_value);
-            System.out.println("iteration: " + iteration + " : " + random_value);
+            System.out.println("iteration: " + iteration + "  one: " + random_value);
             p[iteration] = random_value;
             one = new TreeSpecies(random_value, Color.FORESTGREEN);
+            if(twoSpecies)
+            {
+              double random_value_two = getRandomValue(true);
+              int stuck_two = 0;
+              while(!unused_p_values_two.contains(random_value_two))
+              {
+                if(stuck_two <= 10)
+                {
+                  random_value_two = getRandomValue(true);
+                }
+                else
+                {
+                  BigDecimal b = new BigDecimal(random.nextDouble());
+                  b = b.setScale(2, RoundingMode.CEILING);
+                  random_value_two = b.doubleValue();
+                }
+                stuck_two++;
+              }
+              unused_p_values_two.remove(random_value_two);
+              System.out.println("iteration: " + iteration + "  two: " + random_value_two);
+              p_two[iteration] = random_value_two;
+              two = new TreeSpecies(random_value_two, Color.DARKOLIVEGREEN);
+            }
           }
+
+          if(first_iteration)
+          {
+            first_iteration = false;
+          }
+
           if (frame < MAX_STEPS)
           {
             if (GUI)
@@ -387,6 +440,32 @@ public class Main extends Application implements EventHandler<KeyEvent>
             top_fitness[iteration] = top_tree.getFitness();
             fitness[iteration] = one.getFitness();
             top_Pval[iteration] = top_tree.getProbability();
+
+            if(twoSpecies)
+            {
+              two.setBiomass(two.getBiomass() / MAX_STEPS);
+
+              bio_two[iteration] = two.getBiomass();
+              if (two.getLongevity() != 0)
+              {
+                longev_two[iteration] = two.getLongevity();
+                two.setFitness(two.getLongevity() * two.getBiomass());
+              }
+              else
+              {
+                longev_two[iteration] = MAX_STEPS;
+                two.setFitness(5000 * two.getBiomass());
+              }
+
+              if(top_tree_two == null || top_tree_two.getFitness() < two.getFitness()) top_tree_two = two;
+              System.out.println("top:" + top_tree_two.getFitness() + " vs two:" + two.getFitness());
+              top_fitness_two[iteration] = top_tree_two.getFitness();
+              fitness_two[iteration] = two.getFitness();
+              top_Pval_two[iteration] = top_tree_two.getProbability();
+
+              two.setBiomass(0.0);
+              two.setLongevity(0.0);
+            }
 
             iteration++;
             frame = 0;
@@ -462,10 +541,11 @@ public class Main extends Application implements EventHandler<KeyEvent>
       }
     }
 
-    private double getRandomValue()
+    private double getRandomValue(boolean tree_two)
     {
-      double rangeMin, rangeMax;
-      double prob = top_tree.getProbability();
+      double rangeMin, rangeMax, prob;
+      if(!tree_two) prob = top_tree.getProbability();
+      else prob = top_tree_two.getProbability();
       if(prob >= 0.05)
       {
         rangeMin = prob - 0.05;
@@ -491,31 +571,54 @@ public class Main extends Application implements EventHandler<KeyEvent>
 
     private void updateGraph()
     {
-      double biomass = setCellNextState();
+      double biomass[] = setCellNextState();
 
-      biomass /= 62500.0;
-      one.setBiomass(one.getBiomass() + biomass);
-      if(biomass == 0 && frame > 0)
+      one.setBiomass(one.getBiomass() + (biomass[0] / 62500.0));
+      if(biomass[0] == 0 && frame > 0)
       {
         if(one.getLongevity() == 0)
         {
           one.setLongevity(frame);
         }
       }
+
+      if(twoSpecies)
+      {
+        two.setBiomass(two.getBiomass() + (biomass[1] / 62500.0));
+        if(biomass[1] == 0 && frame > 0)
+        {
+          if(two.getLongevity() == 0)
+          {
+            two.setLongevity(frame);
+          }
+        }
+      }
+
       updateCells();
     }
 
     private void updateGraphNoGraphic()
     {
-      double biomass = setCellNextStateNoGUI();
+      double biomass[] = setCellNextStateNoGUI();
 
-      biomass /= 62500.0;
-      one.setBiomass(one.getBiomass() + biomass);
-      if(biomass == 0 && frame > 0)
+      one.setBiomass(one.getBiomass() + (biomass[0] / 62500.0));
+      if(biomass[0] == 0 && frame > 0)
       {
         if(one.getLongevity() == 0)
         {
           one.setLongevity(frame);
+        }
+      }
+
+      if(twoSpecies)
+      {
+        two.setBiomass(two.getBiomass() + (biomass[1] / 62500.0));
+        if(biomass[1] == 0 && frame > 0)
+        {
+          if(two.getLongevity() == 0)
+          {
+            two.setLongevity(frame);
+          }
         }
       }
 
@@ -523,9 +626,9 @@ public class Main extends Application implements EventHandler<KeyEvent>
     }
 
     //Updates the state based on the status
-    private double setCellNextState()
+    private double[] setCellNextState()
     {
-      double biomass = 0.0;
+      double biomass[] = {0.0, 0.0};
 
       for(int i = 1; i <= 250; i++)
       {
@@ -542,16 +645,17 @@ public class Main extends Application implements EventHandler<KeyEvent>
             nextState[i][j] = 0;
             for (Cell c : graph[i][j].getNeighbors())
             {
-              if (c.getStatus() == 1 || (status == 2 && twoSpecies))
+              if (c.getStatus() == 1 || c.getStatus() == 2)
               {
                 nextState[c.getX()][c.getY()] = 3;
               }
             }
           }
           //if there is a tree, check for lightning strike
-          else if(status == 1 || (status == 2 && twoSpecies))
+          else if(status == 1 || status == 2)
           {
-            biomass += 1.0;
+            if(status == 1) biomass[0] += 1.0;
+            else if(status == 2) biomass[1] += 1.0;
             if(random.nextDouble() < LIGHTNING_STRIKE_PROB)
             {
               nextState[i][j] = 3;
@@ -560,15 +664,36 @@ public class Main extends Application implements EventHandler<KeyEvent>
           //if barren chance to spawn tree
           else if(status == 0)
           {
-            if(random.nextDouble() < one.getProbability())
+            if (twoSpecies)
             {
-              nextState[i][j] = 1;
-            }
-            else if(twoSpecies)
-            {
-              if(random.nextDouble() < two.getProbability())
+              if(one.getProbability() >= two.getProbability())
               {
-                nextState[i][j] = 2;
+                if(random.nextDouble() < one.getProbability())
+                {
+                  nextState[i][j] = 1;
+                }
+                else if(random.nextDouble() < two.getProbability())
+                {
+                  nextState[i][j] = 2;
+                }
+              }
+              else
+              {
+                if(random.nextDouble() < two.getProbability())
+                {
+                  nextState[i][j] = 2;
+                }
+                else if(random.nextDouble() < one.getProbability())
+                {
+                  nextState[i][j] = 1;
+                }
+              }
+            }
+            else
+            {
+              if (random.nextDouble() < one.getProbability())
+              {
+                nextState[i][j] = 1;
               }
             }
           }
@@ -610,7 +735,7 @@ public class Main extends Application implements EventHandler<KeyEvent>
               graph[i][j].getCell().setVisible(true);
               graph[i][j].setStatus(1);
             }
-            else if(status == 2 && twoSpecies)
+            else if(status == 2)
             {
               graph[i][j].getCell().setFill(two.getColor());
               graph[i][j].getCell().setVisible(true);
@@ -627,9 +752,9 @@ public class Main extends Application implements EventHandler<KeyEvent>
     }
 
     //Updates the state based on the status
-    private double setCellNextStateNoGUI()
+    private double[] setCellNextStateNoGUI()
     {
-      double biomass = 0.0;
+      double biomass[] = {0.0, 0.0};
 
       for (int i = 1; i <= 250; i++)
       {
@@ -652,7 +777,7 @@ public class Main extends Application implements EventHandler<KeyEvent>
                 {
                   if (row > 0 && col > 0 && row < 251 && col < 251)
                   {
-                    if (graphNoGUI[row][col] == 1 || (status == 2 && twoSpecies))
+                    if (graphNoGUI[row][col] == 1 || graphNoGUI[row][col] == 2)
                     {
                       nextState[row][col] = 3;
                     }
@@ -662,26 +787,48 @@ public class Main extends Application implements EventHandler<KeyEvent>
             }
           }
           //if there is a tree, check for lightning strike
-          else if (status == 1 || (status == 2 && twoSpecies))
+          else if(status == 1 || status == 2)
           {
-            biomass += 1.0;
-            if (random.nextDouble() < LIGHTNING_STRIKE_PROB)
+            if(status == 1) biomass[0] += 1.0;
+            else if(status == 2) biomass[1] += 1.0;
+            if(random.nextDouble() < LIGHTNING_STRIKE_PROB)
             {
               nextState[i][j] = 3;
             }
           }
           //if barren chance to spawn tree
-          else if (status == 0)
+          else if(status == 0)
           {
-            if (random.nextDouble() < one.getProbability())
+            if (twoSpecies)
             {
-              nextState[i][j] = 1;
-            }
-            else if (twoSpecies)
-            {
-              if (random.nextDouble() < two.getProbability())
+              if(one.getProbability() >= two.getProbability())
               {
-                nextState[i][j] = 2;
+                if(random.nextDouble() < one.getProbability())
+                {
+                  nextState[i][j] = 1;
+                }
+                else if(random.nextDouble() < two.getProbability())
+                {
+                  nextState[i][j] = 2;
+                }
+              }
+              else
+              {
+                if(random.nextDouble() < two.getProbability())
+                {
+                  nextState[i][j] = 2;
+                }
+                else if(random.nextDouble() < one.getProbability())
+                {
+                  nextState[i][j] = 1;
+                }
+              }
+            }
+            else
+            {
+              if (random.nextDouble() < one.getProbability())
+              {
+                nextState[i][j] = 1;
               }
             }
           }
@@ -717,7 +864,7 @@ public class Main extends Application implements EventHandler<KeyEvent>
             {
               graphNoGUI[i][j] = 1;
             }
-            else if(status == 2 && twoSpecies)
+            else if(status == 2)
             {
               graphNoGUI[i][j] = 2;
             }

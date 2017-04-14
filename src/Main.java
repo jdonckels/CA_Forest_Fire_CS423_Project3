@@ -61,8 +61,10 @@ public class Main extends Application implements EventHandler<KeyEvent>
   private double top_Pval[] = new double[100];
   private double top_Pval_two[] = new double[100];
 
-  private boolean twoSpecies = true;
-  private final boolean GUI = false;
+  //All the values that one can change too affect the model, and what it output to cvs, or to the GUI
+  private boolean twoSpecies = false;
+  private final boolean SLOW = true;
+  private final boolean GUI = true;
   private final boolean DEBUG = false;
   private final boolean FIREFIGHTERS = false;
   private final boolean GA = true;
@@ -93,6 +95,7 @@ public class Main extends Application implements EventHandler<KeyEvent>
       }
     }
 
+    //If GUI is set run the GUI
     if(GUI)
     {
       BorderPane pane = new BorderPane();
@@ -118,6 +121,7 @@ public class Main extends Application implements EventHandler<KeyEvent>
       loop.start();
       loop.running = true;
     }
+    //If GA is set run no graphic
     else
     {
       buildBoard(true);
@@ -126,6 +130,10 @@ public class Main extends Application implements EventHandler<KeyEvent>
     }
   }
 
+  /**
+   * Initializes the board, for GUI or nonGUI
+   * @param first_iteration if this is the first iteration or not
+   */
   private void buildBoard(boolean first_iteration)
   {
     if(GUI)
@@ -166,6 +174,13 @@ public class Main extends Application implements EventHandler<KeyEvent>
     }
   }
 
+  /**
+   * This is only for the GUI, and will allow for performance increases, because then it does not need
+   * to recalculate the neighbors every iteration.
+   * @param i
+   * @param j
+   * @return list of neighbors
+   */
   private List<Cell> getNeighbors(int i, int j)
   {
     List<Cell> neighbors = new ArrayList<>();
@@ -239,6 +254,9 @@ public class Main extends Application implements EventHandler<KeyEvent>
     cameraXform.ry.setPivotX(0);
   }
 
+  /**
+   * This deals with saving the results into a cvs file, and parsing the results accordingly
+   */
   private void saveResults()
   {
     BufferedWriter bw = null;
@@ -275,8 +293,8 @@ public class Main extends Application implements EventHandler<KeyEvent>
             bw.write("pVal, biomass, longevity, fitness, top_pval, top_fitness, pVal_Two, biomass_Two, longevity_Two, top_Fitness_Two, top_Pval_Two\n");
             for (int i = 0; i < 100; i++)
             {
-              bw.write(p[i] + ", " + bio[i] + ", " + longev[i] + ", " + fitness[i] + ", " + top_Pval[i] + ", " + top_fitness[i] +
-                      p_two[i] + ", " + bio_two[i] + ", " + longev_two[i] + ", " + fitness_two[i] + ", " + top_Pval_two[i] + ", " + top_fitness_two[i] +"\n");
+              bw.write(p[i] + ", " + bio[i] + ", " + longev[i] + ", " + fitness[i] + ", " + top_Pval[i] + ", " + top_fitness[i] + ", " + p_two[i]
+                       + ", " + bio_two[i] + ", " + longev_two[i] + ", " + fitness_two[i] + ", " + top_Pval_two[i] + ", " + top_fitness_two[i] +"\n");
             }
           }
         }
@@ -322,8 +340,8 @@ public class Main extends Application implements EventHandler<KeyEvent>
   {
     boolean running = false;
     int frame = 0;
-    private TreeSpecies one = new TreeSpecies(0.6, Color.FORESTGREEN);
-    private TreeSpecies two = new TreeSpecies(0.6, Color.DARKOLIVEGREEN);
+    private TreeSpecies one = new TreeSpecies(0.1, Color.FORESTGREEN);
+    private TreeSpecies two = new TreeSpecies(0.05, Color.DARKOLIVEGREEN);
     private TreeSpecies top_tree = one;
     private TreeSpecies top_tree_two = two;
     private boolean first_iteration = true;
@@ -409,13 +427,16 @@ public class Main extends Application implements EventHandler<KeyEvent>
 
           if (frame < MAX_STEPS)
           {
-            if (GUI)
+            if((frame % 25 == 0 && SLOW) || !SLOW)
             {
-              updateGraph();
-            }
-            else
-            {
-              updateGraphNoGraphic();
+              if (GUI)
+              {
+                updateGraph();
+              }
+              else
+              {
+                updateGraphNoGraphic();
+              }
             }
             frame++;
           }
@@ -497,13 +518,16 @@ public class Main extends Application implements EventHandler<KeyEvent>
           if (frame < MAX_STEPS)
           {
             numberOfFireFightersLeft = numberOfFireFighters;
-            if (GUI)
+            if((frame % 25 == 0 && SLOW) || !SLOW)
             {
-              updateGraph();
-            }
-            else
-            {
-              updateGraphNoGraphic();
+              if (GUI)
+              {
+                updateGraph();
+              }
+              else
+              {
+                updateGraphNoGraphic();
+              }
             }
             frame++;
             if (DEBUG) System.out.println("frame:" + frame);
@@ -541,6 +565,11 @@ public class Main extends Application implements EventHandler<KeyEvent>
       }
     }
 
+    /**
+     * Gets a random value within a range of +- 0.05 from the current p-value.
+     * @param tree_two if this is meant for tree one or two
+     * @return returns the new p-value
+     */
     private double getRandomValue(boolean tree_two)
     {
       double rangeMin, rangeMax, prob;
@@ -569,6 +598,9 @@ public class Main extends Application implements EventHandler<KeyEvent>
       return randomValue.doubleValue();
     }
 
+    /**
+     * Call what is needed to update the graph, this is for GUI, and also sets biomasses, and longevity's.
+     */
     private void updateGraph()
     {
       double biomass[] = setCellNextState();
@@ -597,6 +629,9 @@ public class Main extends Application implements EventHandler<KeyEvent>
       updateCells();
     }
 
+    /**
+     * Call what is needed to update the graph, this is for no-GUI, and also sets biomasses, and longevity's.
+     */
     private void updateGraphNoGraphic()
     {
       double biomass[] = setCellNextStateNoGUI();
@@ -625,7 +660,10 @@ public class Main extends Application implements EventHandler<KeyEvent>
       updateCellsNoGUI();
     }
 
-    //Updates the state based on the status
+    /**
+     * Updates the state based on the status, for GUI
+     * @return biomasses for tree one and two if needed
+     */
     private double[] setCellNextState()
     {
       double biomass[] = {0.0, 0.0};
@@ -703,7 +741,9 @@ public class Main extends Application implements EventHandler<KeyEvent>
       return biomass;
     }
 
-    //Updates cell only when needed
+    /**
+     * Updated the corresponding cells to their next state, for GUI
+     */
     private void updateCells()
     {
       for(int i = 1; i <= 250; i++)
@@ -751,7 +791,10 @@ public class Main extends Application implements EventHandler<KeyEvent>
       }
     }
 
-    //Updates the state based on the status
+    /**
+     * Updates the state based on the status, for non GUI
+     * @return biomasses for tree one and two if needed
+     */
     private double[] setCellNextStateNoGUI()
     {
       double biomass[] = {0.0, 0.0};
@@ -838,7 +881,9 @@ public class Main extends Application implements EventHandler<KeyEvent>
       return biomass;
     }
 
-    //Updates cell only when needed
+    /**
+     * Updated the corresponding cells to their next state, for non-GUI
+     */
     private void updateCellsNoGUI()
     {
       for(int i = 1; i <= 250; i++)

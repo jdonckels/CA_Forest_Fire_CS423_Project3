@@ -1,4 +1,8 @@
-This code was created by Joshua Donckels and Michael Wolcott.
+This code was created by Team DonckelsWolcott: Joshua Donckels and Michael Wolcott.
+
+This is for CS423 at University of New Mexico project 3.
+
+It is meant to model a forest fire and how tree species evolve from that.  It also implements multiple species evolving and firefighters.
 
 To run this program one must simply open it up in intellij or any other editor, and run it from there.
 

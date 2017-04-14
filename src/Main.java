@@ -392,7 +392,7 @@ public class Main extends Application implements EventHandler<KeyEvent>
               stuck++;
             }
             unused_p_values.remove(random_value);
-            System.out.println("iteration: " + iteration + "  one: " + random_value);
+            if(DEBUG) System.out.println("iteration: " + iteration + "  one: " + random_value);
             p[iteration] = random_value;
             one = new TreeSpecies(random_value, Color.FORESTGREEN);
             if(twoSpecies)
@@ -414,7 +414,7 @@ public class Main extends Application implements EventHandler<KeyEvent>
                 stuck_two++;
               }
               unused_p_values_two.remove(random_value_two);
-              System.out.println("iteration: " + iteration + "  two: " + random_value_two);
+              if(DEBUG) System.out.println("iteration: " + iteration + "  two: " + random_value_two);
               p_two[iteration] = random_value_two;
               two = new TreeSpecies(random_value_two, Color.DARKOLIVEGREEN);
             }
@@ -457,7 +457,7 @@ public class Main extends Application implements EventHandler<KeyEvent>
             }
 
             if(top_tree == null || top_tree.getFitness() < one.getFitness()) top_tree = one;
-            System.out.println("top:" + top_tree.getFitness() + " vs one:" + one.getFitness());
+            if(DEBUG) System.out.println("top:" + top_tree.getFitness() + " vs one:" + one.getFitness());
             top_fitness[iteration] = top_tree.getFitness();
             fitness[iteration] = one.getFitness();
             top_Pval[iteration] = top_tree.getProbability();
@@ -479,7 +479,7 @@ public class Main extends Application implements EventHandler<KeyEvent>
               }
 
               if(top_tree_two == null || top_tree_two.getFitness() < two.getFitness()) top_tree_two = two;
-              System.out.println("top:" + top_tree_two.getFitness() + " vs two:" + two.getFitness());
+              if(DEBUG) System.out.println("top:" + top_tree_two.getFitness() + " vs two:" + two.getFitness());
               top_fitness_two[iteration] = top_tree_two.getFitness();
               fitness_two[iteration] = two.getFitness();
               top_Pval_two[iteration] = top_tree_two.getProbability();
@@ -512,7 +512,7 @@ public class Main extends Application implements EventHandler<KeyEvent>
         {
           if (frame == 0 && !FIREFIGHTERS)
           {
-            System.out.println("iteration: " + iteration);
+            if(DEBUG) System.out.println("iteration: " + iteration);
             one = new TreeSpecies(p[iteration], Color.FORESTGREEN);
           }
           if (frame < MAX_STEPS)
